@@ -63,11 +63,11 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create a default fully qualified app name for the postgres requirement.
+Create a default fully qualified app name for the mysql requirement.
 */}}
-{{- define "keycloak.postgresql.fullname" -}}
-{{- $postgresContext := dict "Values" .Values.postgresql "Release" .Release "Chart" (dict "Name" "postgresql") -}}
-{{ include "postgresql.fullname" $postgresContext }}
+{{- define "keycloak.mysql.fullname" -}}
+{{- $mysqlContext := dict "Values" .Values.mysql "Release" .Release "Chart" (dict "Name" "mysql") -}}
+{{ include "common.names.fullname" $mysqlContext }}
 {{- end }}
 
 {{/*

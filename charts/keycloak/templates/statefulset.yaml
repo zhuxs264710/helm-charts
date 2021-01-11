@@ -34,17 +34,17 @@ spec:
         {{- end }}
       labels:
         {{- include "keycloak.selectorLabels" . | nindent 8 }}
-        {{- if and .Values.postgresql.enabled (and .Values.postgresql.networkPolicy .Values.postgresql.networkPolicy.enabled) }}
-        {{ include "keycloak.postgresql.fullname" . }}-client: "true"
+        {{- if and .Values.mysql.enabled (and .Values.mysql.networkPolicy .Values.mysql.networkPolicy.enabled) }}
+        {{ include "keycloak.mysql.fullname" . }}-client: "true"
         {{- end }}
         {{- range $key, $value := .Values.podLabels }}
         {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 8 }}
         {{- end }}
     spec:
-      {{- if or .Values.postgresql.enabled .Values.extraInitContainers }}
+      {{- if or .Values.mysql.enabled .Values.extraInitContainers }}
       initContainers:
-        {{- if .Values.postgresql.enabled }}
-        - name: pgchecker
+        {{- if .Values.mysql.enabled }}
+        - name: mysqlchecker
           image: "{{ .Values.pgchecker.image.repository }}:{{ .Values.pgchecker.image.tag }}"
           imagePullPolicy: {{ .Values.pgchecker.image.pullPolicy }}
           securityContext:
@@ -53,13 +53,13 @@ spec:
             - sh
             - -c
             - |
-              echo 'Waiting for PostgreSQL to become ready...'
+              echo 'Waiting for MySQL to become ready...'
 
-              until printf "." && nc -z -w 2 {{ include "keycloak.postgresql.fullname" . }} {{ .Values.postgresql.service.port }}; do
+              until printf "." && nc -z -w 2 {{ include "keycloak.mysql.fullname" . }} {{ .Values.mysql.service.port }}; do
                   sleep 2;
               done;
 
-              echo 'PostgreSQL OK ✓'
+              echo 'MySQL OK ✓'
           resources:
             {{- toYaml .Values.pgchecker.resources | nindent 12 }}
         {{- end }}
@@ -82,22 +82,22 @@ spec:
           {{- tpl . $ | nindent 12 }}
           {{- end }}
           env:
-            {{- if .Values.postgresql.enabled }}
+            {{- if .Values.mysql.enabled }}
             - name: DB_VENDOR
-              value: postgres
+              value: mariadb
             - name: DB_ADDR
-              value: {{ include "keycloak.postgresql.fullname" . }}
+              value: {{ include "keycloak.mysql.fullname" . }}
             - name: DB_PORT
-              value: {{ .Values.postgresql.service.port | quote }}
+              value: {{ .Values.mysql.service.port | quote }}
             - name: DB_DATABASE
-              value: {{ .Values.postgresql.postgresqlDatabase | quote }}
+              value: {{ .Values.mysql.db.name | quote }}
             - name: DB_USER
-              value: {{ .Values.postgresql.postgresqlUsername | quote }}
+              value: {{ .Values.mysql.db.user | quote }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "keycloak.postgresql.fullname" . }}
-                  key: postgresql-password
+                  name: {{ include "keycloak.mysql.fullname" . }}
+                  key: mariadb-password
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- tpl . $ | nindent 12 }}

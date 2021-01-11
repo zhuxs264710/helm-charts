@@ -5,7 +5,7 @@ fullnameOverride: ""
 nameOverride: ""
 
 # The number of replicas to create (has no effect if autoscaling enabled)
-replicas: 1
+replicas: 3
 
 image:
   # The Keycloak image repository
@@ -75,13 +75,15 @@ extraInitContainers: ""
 extraContainers: ""
 
 # Lifecycle hooks for the Keycloak container
-lifecycleHooks: |
+lifecycleHooks: ""
 #  postStart:
-#    exec:
-#      command:
-#        - /bin/sh
-#        - -c
-#        - ls
+#   exec:
+#     command:
+#       - /opt/jboss/keycloak/bin/add-user-keycloak.sh
+#       - -u
+#       - keycloak
+#       - -p
+#       - keycloak
 
 # Termination grace period in seconds for Keycloak shutdown. Clusters with a large cache might need to extend this to give Infinispan more time to rebalance
 terminationGracePeriodSeconds: 60
@@ -96,15 +98,32 @@ command: []
 args: []
 
 # Additional environment variables for Keycloak
-extraEnv: ""
-  # - name: KEYCLOAK_LOGLEVEL
-  #   value: DEBUG
-  # - name: WILDFLY_LOGLEVEL
-  #   value: DEBUG
-  # - name: CACHE_OWNERS_COUNT
-  #   value: "2"
-  # - name: CACHE_OWNERS_AUTH_SESSIONS_COUNT
-  #   value: "2"
+#     value:    kubernetes.KUBE_PING or dns.DNS_PING
+  #    value:  'dns_query={{ include "keycloak.serviceDnsName" . }}' or "namespace={{ .Release.Namespace }}"
+  #  - name: KEYCLOAK_LOGLEVEL
+  #    value: DEBUG
+  #  - name: WILDFLY_LOGLEVEL
+#    value: DEBUG
+
+extraEnv: |
+  - name: KEYCLOAK_USER
+    value: admin
+  - name: KEYCLOAK_PASSWORD
+    value: admin
+  - name: CACHE_OWNERS_COUNT
+    value: "3"
+  - name: CACHE_OWNERS_AUTH_SESSIONS_COUNT
+    value: "3"
+  - name: PROXY_ADDRESS_FORWARDING
+    value: "true"
+  - name: JGROUPS_DISCOVERY_PROTOCOL
+    value: dns.DNS_PING
+  - name: JGROUPS_DISCOVERY_PROPERTIES
+    value: 'dns_query={{ include "keycloak.serviceDnsName" . }}'
+  - name: KUBERNETES_LABELS
+    value: app='{{ .Release.Name }}'
+  - name: KUBERNETES_NAMESPACE
+    value: '{{ .Release.Namespace }}'
 
 # Additional environment variables for Keycloak mapped from Secret or ConfigMap
 extraEnvFrom: ""
@@ -113,30 +132,30 @@ extraEnvFrom: ""
 priorityClassName: ""
 
 # Pod affinity
-affinity: |
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            {{- include "keycloak.selectorLabels" . | nindent 10 }}
-          matchExpressions:
-            - key: app.kubernetes.io/component
-              operator: NotIn
-              values:
-                - test
-        topologyKey: kubernetes.io/hostname
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              {{- include "keycloak.selectorLabels" . | nindent 12 }}
-            matchExpressions:
-              - key: app.kubernetes.io/component
-                operator: NotIn
-                values:
-                  - test
-          topologyKey: failure-domain.beta.kubernetes.io/zone
+affinity: ""
+#  podAntiAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution:
+#      - labelSelector:
+#          matchLabels:
+#            {{- include "keycloak.selectorLabels" . | nindent 10 }}
+#          matchExpressions:
+#            - key: app.kubernetes.io/component
+#              operator: NotIn
+#              values:
+#                - test
+#        topologyKey: kubernetes.io/hostname
+#    preferredDuringSchedulingIgnoredDuringExecution:
+#      - weight: 100
+#        podAffinityTerm:
+#          labelSelector:
+#            matchLabels:
+#              {{- include "keycloak.selectorLabels" . | nindent 12 }}
+#            matchExpressions:
+#              - key: app.kubernetes.io/component
+#                operator: NotIn
+#                values:
+#                  - test
+#          topologyKey: failure-domain.beta.kubernetes.io/zone
 
 # Node labels for Pod assignment
 nodeSelector: {}
@@ -249,11 +268,13 @@ service:
 
 ingress:
   # If `true`, an Ingress is created
-  enabled: false
+  enabled: true
   # The Service port targeted by the Ingress
   servicePort: http
   # Ingress annotations
-  annotations: {}
+  annotations: {
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+  }
     ## Resolve HTTP 502 error using ingress-nginx:
     ## See https://www.ibm.com/support/pages/502-error-ingress-keycloak-response
     # nginx.ingress.kubernetes.io/proxy-buffer-size: 128k
@@ -308,7 +329,7 @@ route:
 
 pgchecker:
   image:
-    # Docker image used to check Postgresql readiness at startup
+    # Docker image used to check mysql readiness at startup
     repository: docker.io/busybox
     # Image tag for the pgchecker image
     tag: 1.32
@@ -329,18 +350,22 @@ pgchecker:
       cpu: "10m"
       memory: "16Mi"
 
-postgresql:
-  # If `true`, the Postgresql dependency is enabled
+mysql:
+  # If `true`, the mysql dependency is enabled
   enabled: true
-  # PostgreSQL User to create
-  postgresqlUsername: keycloak
-  # PostgreSQL Password for the new user
-  postgresqlPassword: keycloak
-  # PostgreSQL Database to create
-  postgresqlDatabase: keycloak
-  # Persistent Volume Storage configuration
+  db:
+    user: keycloak
+    password: keycloak
+    name: keycloak
+#  # mysql User to create
+#  mysqlUsername: keycloak
+#  # mysql Password for the new user
+#  mysqlPassword: keycloak
+#  # mysql Database to create
+#  mysqlDatabase: keycloak
+#  # Persistent Volume Storage configuration
 
-  # PostgreSQL network policy configuration
+  # mysql network policy configuration
   networkPolicy:
     enabled: false
 

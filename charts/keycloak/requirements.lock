@@ -1,6 +1,6 @@
 dependencies:
-- name: postgresql
+- name: mariadb-galera
   repository: https://charts.bitnami.com/bitnami
-  version: 9.1.1
-digest: sha256:33ee9e6caa9e519633071fd71aedd9de7906b9a9d7fb629eb814d9f72bb8d68e
-generated: "2020-07-24T07:40:55.78753+02:00"
+  version: 5.3.4
+digest: sha256:e483d3de07e12d2ff4f1cb3617d364df2fed198f24dad3f5036fb0f0ab87fe09
+generated: "2021-01-11T10:16:35.92135+08:00"
